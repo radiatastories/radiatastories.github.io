@@ -79,6 +79,26 @@
   }
   tr[data-opcode] { transition: opacity .1s; }
   tr[data-opcode].hidden { display: none; }
+  .op { cursor: pointer; position: relative; }
+  .op:hover { text-decoration: underline; }
+  .addr-popup {
+    position: fixed;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: .6rem .9rem;
+    font-family: 'Cascadia Code', Consolas, monospace;
+    font-size: .82rem;
+    line-height: 1.8;
+    color: var(--text);
+    z-index: 1000;
+    box-shadow: 0 4px 16px rgba(0,0,0,.5);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .addr-popup .addr-label { color: var(--dim); }
+  .addr-popup .addr-value { color: var(--green); font-weight: 600; }
+  .addr-popup .addr-title { color: var(--accent); font-weight: 700; margin-bottom: 2px; }
 </style>
 <link rel="icon" type="image/x-icon" href="../favicon.ico">
 </head>
@@ -1913,6 +1933,202 @@
 
   // Initial tally
   updateTally();
+
+  // ── Address popup on opcode click ──────────────────
+  const addrMap = {
+    0x00:{debug:'0x002EC140',release:'0x002CE030'},
+    0x01:{debug:'0x002EBDD0',release:'0x002CDD50'},
+    0x02:{debug:'0x002EBD10',release:'0x002CDC90'},
+    0x03:{debug:'0x002EB920',release:'0x002CD970'},
+    0x04:{debug:'0x002EB560',release:'0x002CD630'},
+    0x05:{debug:'0x002EB4B0',release:'0x002CD580'},
+    0x06:{debug:'0x002EB460',release:'0x002CD540'},
+    0x0A:{debug:'0x002EB390',release:'0x002CD4C0'},
+    0x0B:{debug:'0x002EB210',release:'0x002CD340'},
+    0x0D:{debug:'0x002EAFB0',release:'0x002CD0E0'},
+    0x0E:{debug:'0x002EAF60',release:'0x002CD090'},
+    0x0F:{debug:'0x002EAF50',release:'0x002CD080'},
+    0x10:{debug:'0x002EAEB0',release:'0x002CCFE0'},
+    0x11:{debug:'0x002EAB80',release:'0x002CCCB0'},
+    0x12:{debug:'0x002EA6F0',release:'0x002CC8D0'},
+    0x13:{debug:'0x002EA640',release:'0x002CC820'},
+    0x14:{debug:'0x002E9FA0',release:'0x002CC180'},
+    0x15:{debug:'0x002E9EE0',release:'0x002CC0C0'},
+    0x16:{debug:'0x002E9B90',release:'0x002CBD70'},
+    0x17:{debug:'0x002E9930',release:'0x002CBB80'},
+    0x18:{debug:'0x002E97F0',release:'0x002CBA40'},
+    0x19:{debug:'0x002E94B0',release:'0x002CB700'},
+    0x1A:{debug:'0x002E9250',release:'0x002CB4A0'},
+    0x1B:{debug:'0x002E84C0',release:'0x002CA710'},
+    0x1C:{debug:'0x002E82D0',release:'0x002CA520'},
+    0x1D:{debug:'0x002E82B0',release:'0x002CA500'},
+    0x1E:{debug:'0x002E8250',release:'0x002CA4A0'},
+    0x1F:{debug:'0x002E8200',release:'0x002CA450'},
+    0x20:{debug:'0x002F2B10',release:'0x002D4090'},
+    0x21:{debug:'0x002F2A50',release:'0x002D3FD0'},
+    0x22:{debug:'0x002F27F0',release:'0x002D3DF0'},
+    0x23:{debug:'0x002F2460',release:'0x002D3AA0'},
+    0x24:{debug:'0x002F21E0',release:'0x002D3860'},
+    0x25:{debug:'0x002F20E0',release:'0x002D37A0'},
+    0x26:{debug:'0x002F1D40',release:'0x002D3480'},
+    0x27:{debug:'0x002F1BD0',release:'0x002D3310'},
+    0x28:{debug:'0x002F1980',release:'0x002D3100'},
+    0x29:{debug:'0x002F18A0',release:'0x002D3060'},
+    0x2A:{debug:'0x002F0CB0',release:'0x002D24B0'},
+    0x2B:{debug:'0x002F0BD0',release:'0x002D2410'},
+    0x2C:{debug:'0x002F0A60',release:'0x002D22E0'},
+    0x2D:{debug:'0x002EFD20',release:'0x002D15E0'},
+    0x2E:{debug:'0x002EFD10',release:'0x002D15D0'},
+    0x2F:{debug:'0x002EFC00',release:'0x002D1500'},
+    0x30:{debug:'0x002EF930',release:'0x002D1270'},
+    0x31:{debug:'0x002EF470',release:'0x002D0E30'},
+    0x32:{debug:'0x002EED60',release:'0x002D0760'},
+    0x33:{debug:'0x002EEB10',release:'0x002D0590'},
+    0x34:{debug:'0x002EE930',release:'0x002D0430'},
+    0x35:{debug:'0x002EE170',release:'0x002CFCE0'},
+    0x36:{debug:'0x002EDD20',release:'0x002CF910'},
+    0x37:{debug:'0x002ED1B0',release:'0x002CEEE0'},
+    0x38:{debug:'0x002ECF60',release:'0x002CED50'},
+    0x39:{debug:'0x002ECD80',release:'0x002CEBB0'},
+    0x3A:{debug:'0x002EC7A0',release:'0x002CE610'},
+    0x3B:{debug:'0x002EC6D0',release:'0x002CE580'},
+    0x40:{debug:'0x002F48D0',release:'0x002D5AF0'},
+    0x41:{debug:'0x002F4890',release:'0x002D5AB0'},
+    0x42:{debug:'0x002F47B0',release:'0x002D5A10'},
+    0x43:{debug:'0x002F4780',release:'0x002D59E0'},
+    0x44:{debug:'0x002F4640',release:'0x002D5920'},
+    0x45:{debug:'0x002F4490',release:'0x002D5770'},
+    0x46:{debug:'0x002F4420',release:'0x002D5700'},
+    0x47:{debug:'0x002F4320',release:'0x002D5600'},
+    0x48:{debug:'0x002F41E0',release:'0x002D54C0'},
+    0x49:{debug:'0x002F4150',release:'0x002D5430'},
+    0x4A:{debug:'0x002F4090',release:'0x002D5370'},
+    0x4B:{debug:'0x002F4010',release:'0x002D52F0'},
+    0x4C:{debug:'0x002F3F20',release:'0x002D5250'},
+    0x4D:{debug:'0x002F39E0',release:'0x002D4D10'},
+    0x4E:{debug:'0x002F35D0',release:'0x002D4940'},
+    0x4F:{debug:'0x002F3400',release:'0x002D4770'},
+    0x50:{debug:'0x002F6660',release:'0x002D7760'},
+    0x51:{debug:'0x002F6370',release:'0x002D74B0'},
+    0x52:{debug:'0x002F5DD0',release:'0x002D6F10'},
+    0x53:{debug:'0x002F5D50',release:'0x002D6E90'},
+    0x54:{debug:'0x002F5660',release:'0x002D6860'},
+    0x55:{debug:'0x002F51E0',release:'0x002D63E0'},
+    0x56:{debug:'0x002F51A0',release:'0x002D63A0'},
+    0x57:{debug:'0x002F4D90',release:'0x002D5FB0'},
+    0x58:{debug:'0x002F4CD0',release:'0x002D5EF0'},
+    0x59:{debug:'0x002F49A0',release:'0x002D5BC0'},
+    0x5A:{debug:'0x002F4930',release:'0x002D5B50'},
+    0x60:{debug:'0x002F7810',release:'0x002D8910'},
+    0x61:{debug:'0x002F77C0',release:'0x002D88C0'},
+    0x62:{debug:'0x002F7350',release:'0x002D8450'},
+    0x63:{debug:'0x002F7210',release:'0x002D8310'},
+    0x64:{debug:'0x002F6FB0',release:'0x002D80B0'},
+    0x65:{debug:'0x002F6F50',release:'0x002D8050'},
+    0x66:{debug:'0x002F6F10',release:'0x002D8010'},
+    0x67:{debug:'0x002F6C90',release:'0x002D7D90'},
+    0x68:{debug:'0x002F68F0',release:'0x002D79F0'},
+    0x69:{debug:'0x002F68D0',release:'0x002D79D0'},
+    0x6A:{debug:'0x002F6720',release:'0x002D7820'},
+    0x70:{debug:'0x002F8450',release:'0x002D9490'},
+    0x71:{debug:'0x002F8420',release:'0x002D9460'},
+    0x72:{debug:'0x002F83C0',release:'0x002D9400'},
+    0x73:{debug:'0x002F8380',release:'0x002D93C0'},
+    0x74:{debug:'0x002F82F0',release:'0x002D9330'},
+    0x75:{debug:'0x002F7DD0',release:'0x002D8ED0'},
+    0x76:{debug:'0x002F7BA0',release:'0x002D8CA0'},
+    0x78:{debug:'0x002F7B80',release:'0x002D8C80'},
+    0x79:{debug:'0x002F7940',release:'0x002D8A40'},
+    0x7A:{debug:'0x002F78F0',release:'0x002D89F0'},
+    0x7C:{debug:'0x002F78A0',release:'0x002D89A0'},
+    0x7D:{debug:'0x002F7870',release:'0x002D8970'},
+    0x80:{debug:'0x002F8C20',release:'0x002D9C20'},
+    0x81:{debug:'0x002F8A70',release:'0x002D9A70'},
+    0x82:{debug:'0x002F8A40',release:'0x002D9A40'},
+    0x83:{debug:'0x002F8A00',release:'0x002D9A00'},
+    0x88:{debug:'0x002F89D0',release:'0x002D99D0'},
+    0x89:{debug:'0x002F88E0',release:'0x002D98E0'},
+    0x8A:{debug:'0x002F87E0',release:'0x002D97E0'},
+    0x8B:{debug:'0x002F86A0',release:'0x002D96E0'},
+    0x8E:{debug:'0x002F8620',release:'0x002D9660'},
+    0x8F:{debug:'0x002F84E0',release:'0x002D9520'},
+    0xA0:{debug:'0x002F8C60',release:'0x002D9C60'},
+    0xA1:{debug:'0x002F8C50',release:'0x002D9C50'},
+    0xC0:{debug:'0x002FA4E0',release:'0x002DAFF0'},
+    0xC1:{debug:'0x002FA240',release:'0x002DAD90'},
+    0xC2:{debug:'0x002FA230',release:'0x002DAD80'},
+    0xC3:{debug:'0x002FA100',release:'0x002DAC50'},
+    0xC4:{debug:'0x002F9F70',release:'0x002DAAC0'},
+    0xC5:{debug:'0x002F9D10',release:'0x002DA8A0'},
+    0xC6:{debug:'0x002F9AA0',release:'0x002DA6F0'},
+    0xC7:{debug:'0x002F9960',release:'0x002DA5B0'},
+    0xD0:{debug:'0x002FC470',release:'0x002DC9C0'},
+    0xD1:{debug:'0x002FC1D0',release:'0x002DC720'},
+    0xD2:{debug:'0x002FAE50',release:'0x002DB810'},
+    0xD3:{debug:'0x002FAD30',release:'0x002DB730'},
+    0xD4:{debug:'0x002FAB00',release:'0x002DB580'},
+    0xD5:{debug:'0x002FA930',release:'0x002DB3B0'},
+    0xD6:{debug:'0x002FA620',release:'0x002DB130'},
+    0xE0:{debug:'0x002FD140',release:'0x002DD1B0'},
+    0xE1:{debug:'0x002FD040',release:'0x002DD0B0'},
+    0xE2:{debug:'0x002FCFA0',release:'0x002DD010'},
+    0xF0:{debug:'0x002FD260',release:'0x002DD280'},
+    0xFF:{debug:'0x002FD250',release:'0x002DD270'},
+  };
+
+  let activePopup = null;
+
+  function removePopup() {
+    if (activePopup) { activePopup.remove(); activePopup = null; }
+  }
+
+  document.addEventListener('click', function (e) {
+    const opCell = e.target.closest('td.op');
+    if (!opCell) { removePopup(); return; }
+
+    const row = opCell.closest('tr[data-opcode]');
+    if (!row) { removePopup(); return; }
+
+    const opcodeStr = row.dataset.opcode;
+    const opcodeVal = parseInt(opcodeStr, 16);
+    const addrs = addrMap[opcodeVal];
+
+    removePopup();
+
+    const popup = document.createElement('div');
+    popup.className = 'addr-popup';
+    const nameCell = row.querySelector('.name');
+    const name = nameCell ? nameCell.textContent : opcodeStr;
+    popup.innerHTML =
+      '<div class="addr-title">' + opcodeStr.toUpperCase() + ' ' + name + '</div>' +
+      '<span class="addr-label">Release (ENG):&nbsp;</span><span class="addr-value">' +
+        (addrs ? addrs.release : '—') + '</span><br>' +
+      '<span class="addr-label">Debug (ENG):&nbsp;&nbsp;&nbsp;</span><span class="addr-value">' +
+        (addrs ? addrs.debug : '—') + '</span>';
+
+    document.body.appendChild(popup);
+    activePopup = popup;
+
+    // Position near the clicked cell
+    const rect = opCell.getBoundingClientRect();
+    let left = rect.right + 8;
+    let top = rect.top;
+    // Keep on screen
+    if (left + popup.offsetWidth > window.innerWidth - 10) {
+      left = rect.left - popup.offsetWidth - 8;
+    }
+    if (top + popup.offsetHeight > window.innerHeight - 10) {
+      top = window.innerHeight - popup.offsetHeight - 10;
+    }
+    popup.style.left = left + 'px';
+    popup.style.top = top + 'px';
+  });
+
+  // Dismiss on scroll or Escape
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') removePopup();
+  });
+  window.addEventListener('scroll', removePopup, { passive: true });
 })();
 </script>
 </body>
